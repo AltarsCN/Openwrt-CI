@@ -82,3 +82,28 @@ if [ -f "$CM_FILE" ]; then
 
 	cd $PKG_PATH && echo "coremark has been fixed!"
 fi
+
+#修复vlmcsd编译失败
+vlmcsd_dir="$GITHUB_WORKSPACE/wrt/feeds/packages/net/vlmcsd"
+vlmcsd_patch_src="$GITHUB_WORKSPACE/patches/001-fix_compile_with_ccache.patch"
+vlmcsd_patch_dest="$vlmcsd_dir/patches"
+
+if [ -d "$vlmcsd_dir" ]; then
+    # 检查补丁文件是否存在
+    if [ ! -f "$vlmcsd_patch_src" ]; then
+        echo "Error: vlmcsd patch file $vlmcsd_patch_src not found!" >&2
+        exit 1
+    fi
+
+    # 创建目标目录并复制补丁
+    mkdir -p "$vlmcsd_patch_dest" || exit 1
+    cp -f "$vlmcsd_patch_src" "$vlmcsd_patch_dest" || exit 1
+
+    echo "vlmcsd: Patch applied successfully!"
+    cd "$PKG_PATH" && echo "vlmcsd has been fixed!"
+else
+    echo "Warning: vlmcsd directory $vlmcsd_dir not found, skipping patch."
+fi
+
+
+																				
