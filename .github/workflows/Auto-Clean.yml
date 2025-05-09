@@ -8,6 +8,12 @@ on:
   workflow_dispatch:
     inputs:
       NUMBER:
+        description: "保留最新的发布数量，0表示全部保留"
+        default: '0'
+        required: false
+        type: string
+      DAYS:
+        description: "保留工作流记录的天数"
         default: '0'
         required: false
         type: string
@@ -26,4 +32,4 @@ jobs:
           releases_keep_latest: ${{inputs.NUMBER || '0'}}
           delete_tags: true
           delete_workflows: true
-          workflows_keep_day: 0
+          workflows_keep_day: ${{inputs.DAYS || '0'}}

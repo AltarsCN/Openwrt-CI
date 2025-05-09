@@ -9,35 +9,43 @@ UPDATE_PACKAGE() {
 	local PKG_LIST=("$PKG_NAME" $5)  # 第5个参数为自定义名称列表
 	local REPO_NAME=${PKG_REPO#*/}
 
-	echo " "
+	echo "=== 开始处理软件包: $PKG_NAME ==="
 
 	# 删除本地可能存在的不同名称的软件包
 	for NAME in "${PKG_LIST[@]}"; do
 		# 查找匹配的目录
-		echo "Search directory: $NAME"
+		echo "搜索目录: $NAME"
 		local FOUND_DIRS=$(find ../feeds/luci/ ../feeds/packages/ -maxdepth 3 -type d -iname "*$NAME*" 2>/dev/null)
 
 		# 删除找到的目录
 		if [ -n "$FOUND_DIRS" ]; then
 			while read -r DIR; do
 				rm -rf "$DIR"
-				echo "Delete directory: $DIR"
+				echo "删除目录: $DIR"
 			done <<< "$FOUND_DIRS"
 		else
-			echo "Not fonud directory: $NAME"
+			echo "未找到目录: $NAME"
 		fi
 	done
 
 	# 克隆 GitHub 仓库
-	git clone --depth=1 --single-branch --branch $PKG_BRANCH "https://github.com/$PKG_REPO.git"
+	echo "克隆仓库: $PKG_REPO 分支: $PKG_BRANCH"
+	if ! git clone --depth=1 --single-branch --branch "$PKG_BRANCH" "https://github.com/$PKG_REPO.git"; then
+		echo "克隆仓库失败: $PKG_REPO"
+		return 1
+	fi
 
 	# 处理克隆的仓库
 	if [[ $PKG_SPECIAL == "pkg" ]]; then
+		echo "从大杂烩中提取插件: $PKG_NAME"
 		find ./$REPO_NAME/*/ -maxdepth 3 -type d -iname "*$PKG_NAME*" -prune -exec cp -rf {} ./ \;
 		rm -rf ./$REPO_NAME/
 	elif [[ $PKG_SPECIAL == "name" ]]; then
+		echo "重命名仓库: $REPO_NAME -> $PKG_NAME"
 		mv -f $REPO_NAME $PKG_NAME
 	fi
+	
+	echo "=== 软件包处理完成: $PKG_NAME ==="
 }
 
 # 调用示例

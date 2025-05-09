@@ -82,6 +82,15 @@ jobs:
           sudo mkdir -p /mnt/build_wrt
           sudo chown $USER:$USER /mnt/build_wrt
           sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
+          
+          # 创建所需的日志目录
+          mkdir -p logs
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ env.WRT_CONFIG }}-${{ github.ref }}-${{ github.sha }}
+          max-size: 2G
 
       - name: Initialization Values
         run: |
@@ -97,6 +106,15 @@ jobs:
           git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
 
           cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
+          
+      - name: Setup Build Cache
+        uses: actions/cache@v3
+        with:
+          path: ./wrt/dl
+          key: openwrt-dl-${{ env.WRT_CONFIG }}-${{ env.WRT_HASH }}
+          restore-keys: |
+            openwrt-dl-${{ env.WRT_CONFIG }}-
+            openwrt-dl-
 
 
 

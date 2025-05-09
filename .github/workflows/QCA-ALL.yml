@@ -8,6 +8,8 @@ on:
     workflows: ["Auto-Clean"]
     types:
       - completed
+    branches:
+      - main
   #手动编译
   workflow_dispatch:
     inputs:
@@ -17,7 +19,7 @@ on:
         type: string
       TEST:
         description: '仅输出配置文件，不编译固件。'
-        default: 'false'
+        default: false
         required: false
         type: boolean
 
@@ -30,7 +32,7 @@ jobs:
     name: ${{matrix.CONFIG}}
     strategy:
       fail-fast: false
-      #max-parallel: 3
+      max-parallel: 2
       matrix:
         CONFIG: [IPQ60XX-WIFI-YES]
         SOURCE: [LiBwrt/openwrt-6.x]
@@ -62,4 +64,4 @@ jobs:
       #插件调整
       WRT_PACKAGE: ${{inputs.PACKAGE}}
       #仅输出配置文件
-      WRT_TEST: ${{inputs.TEST}}
+      WRT_TEST: ${{inputs.TEST == true}}

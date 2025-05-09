@@ -3,23 +3,38 @@
 PKG_PATH="$GITHUB_WORKSPACE/wrt/package/"
 
 #预置HomeProxy数据
-if [ -d *"homeproxy"* ]; then
+if [ -d "${PKG_PATH}homeproxy" ] || [ -d "${PKG_PATH}luci-app-homeproxy" ]; then
 	HP_RULE="surge"
 	HP_PATH="homeproxy/root/etc/homeproxy"
 
+	echo "===== 开始配置 HomeProxy 数据 ====="
+
+	# 确保目录存在
+	mkdir -p ./$HP_PATH/resources/
+
+	# 清理现有资源
 	rm -rf ./$HP_PATH/resources/*
 
-	git clone -q --depth=1 --single-branch --branch "release" "https://github.com/Loyalsoldier/surge-rules.git" ./$HP_RULE/
-	cd ./$HP_RULE/ && RES_VER=$(git log -1 --pretty=format:'%s' | grep -o "[0-9]*")
+	echo "正在克隆 surge-rules..."
+	if ! git clone -q --depth=1 --single-branch --branch "release" "https://github.com/Loyalsoldier/surge-rules.git" ./$HP_RULE/; then
+		echo "克隆 surge-rules 失败，跳过 HomeProxy 数据配置"
+		exit 1
+	fi
+
+	cd ./$HP_RULE/ || exit 1
+	RES_VER=$(git log -1 --pretty=format:'%s' | grep -o "[0-9]*" || echo "unknown")
+	echo "surge-rules 版本: $RES_VER"
 
 	echo $RES_VER | tee china_ip4.ver china_ip6.ver china_list.ver gfw_list.ver
 	awk -F, '/^IP-CIDR,/{print $2 > "china_ip4.txt"} /^IP-CIDR6,/{print $2 > "china_ip6.txt"}' cncidr.txt
 	sed 's/^\.//g' direct.txt > china_list.txt ; sed 's/^\.//g' gfw.txt > gfw_list.txt
+	
+	echo "正在移动资源文件..."
 	mv -f ./{china_*,gfw_list}.{ver,txt} ../$HP_PATH/resources/
 
 	cd .. && rm -rf ./$HP_RULE/
 
-	cd $PKG_PATH && echo "homeproxy date has been updated!"
+	echo "HomeProxy 数据已更新完成！"
 fi
 
 #修改argon主题字体和颜色
