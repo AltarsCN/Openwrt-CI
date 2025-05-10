@@ -102,12 +102,14 @@ jobs:
           echo "WRT_LIST=none" >> $GITHUB_ENV
 
       - name: Clone Code
+        id: clone-code
         run: |
+          set -euo pipefail
           git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
+          cd ./wrt/
+          echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
 
-          cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
-          
-      - name: Setup Build Cache
+      - name: Setup Build Cache (dl)
         uses: actions/cache@v3
         with:
           path: ./wrt/dl
@@ -116,47 +118,23 @@ jobs:
             openwrt-dl-${{ env.WRT_CONFIG }}-
             openwrt-dl-
 
+      - name: Setup Build Cache (ccache)
+        uses: actions/cache@v3
+        with:
+          path: ./wrt/.ccache
+          key: openwrt-ccache-${{ env.WRT_CONFIG }}-${{ env.WRT_HASH }}
+          restore-keys: |
+            openwrt-ccache-${{ env.WRT_CONFIG }}-
+            openwrt-ccache-
+
 
 
       - name: Check Scripts
         run: |
-          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+          set -euo pipefail
+          find ./wrt/ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
 
-      - name: Check Caches
-        id: check-cache
-        if: env.WRT_TEST != 'true'
-        uses: actions/cache@main
-        with:
-          key: ${{env.WRT_CONFIG}}-${{env.WRT_VER}}-${{env.WRT_HASH}}
-          restore-keys: ${{env.WRT_CONFIG}}-${{env.WRT_VER}}
-          path: |
-            ./wrt/.ccache
-            ./wrt/staging_dir/host*
-            ./wrt/staging_dir/tool*
-
-      - name: Update Caches
-        if: env.WRT_TEST != 'true'
-        run: |
-          if [ -d "./wrt/staging_dir" ]; then
-            find "./wrt/staging_dir" -type d -name "stamp" -not -path "*target*" | while read -r DIR; do
-              find "$DIR" -type f -exec touch {} +
-            done
-
-            mkdir -p ./wrt/tmp && echo "1" > ./wrt/tmp/.build
-
-            echo "toolchain skiped done!"
-          else
-            echo "caches missed!"
-          fi
-
-          if ${{steps.check-cache.outputs.cache-hit != 'true'}}; then
-            CACHE_LIST=$(gh cache list --key "$WRT_CONFIG-$WRT_VER" | cut -f 1)
-            for CACHE_KEY in $CACHE_LIST; do
-              gh cache delete $CACHE_KEY
-            done
-
-            echo "caches cleanup done!"
-          fi
+      # 统一缓存策略，移除旧的 check caches 和 update caches 步骤，ccache 由 ccache-action 自动管理，dl/.ccache 由 actions/cache 管理
 
       - name: Update Feeds
         run: |
