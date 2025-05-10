@@ -132,7 +132,7 @@ jobs:
       - name: Check Scripts
         run: |
           set -euo pipefail
-          find ./wrt/ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
 
       # 统一缓存策略，移除旧的 check caches 和 update caches 步骤，ccache 由 ccache-action 自动管理，dl/.ccache 由 actions/cache 管理
 

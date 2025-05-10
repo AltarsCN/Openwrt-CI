@@ -104,20 +104,27 @@ vlmcsd_patch_src="$GITHUB_WORKSPACE/Patches/001-fix_compile_with_ccache.patch"
 vlmcsd_patch_dest="$vlmcsd_dir/patches"
 
 if [ -d "$vlmcsd_dir" ]; then
-    # 检查补丁文件是否存在
-    if [ ! -f "$vlmcsd_patch_src" ]; then
-        echo "Error: vlmcsd patch file $vlmcsd_patch_src not found!" >&2
-        exit 1
-    fi
+	# 检查补丁文件是否存在
+	if [ ! -f "$vlmcsd_patch_src" ]; then
+		echo "Error: vlmcsd patch file $vlmcsd_patch_src not found!" >&2
+		exit 1
+	fi
 
-    # 创建目标目录并复制补丁
-    mkdir -p "$vlmcsd_patch_dest" || exit 1
-    cp -f "$vlmcsd_patch_src" "$vlmcsd_patch_dest" || exit 1
+	# 创建目标目录并复制补丁
+	mkdir -p "$vlmcsd_patch_dest" || exit 1
+	cp -f "$vlmcsd_patch_src" "$vlmcsd_patch_dest" || exit 1
 
-    echo "vlmcsd: Patch applied successfully!"
-    cd "$PKG_PATH" && echo "vlmcsd has been fixed!"
+	# 进入源码目录应用补丁（如果未应用过）
+	if ! grep -q 'fix_compile_with_ccache' "$vlmcsd_dir/Makefile" 2>/dev/null; then
+		cd "$vlmcsd_dir" || exit 1
+		patch -p1 < "$vlmcsd_patch_src" && echo "vlmcsd: Patch applied to source!" || echo "vlmcsd: Patch may already be applied."
+		cd "$PKG_PATH"
+	fi
+
+	echo "vlmcsd: Patch copied and applied successfully!"
+	cd "$PKG_PATH" && echo "vlmcsd has been fixed!"
 else
-    echo "Warning: vlmcsd directory $vlmcsd_dir not found, skipping patch."
+	echo "Warning: vlmcsd directory $vlmcsd_dir not found, skipping patch."
 fi
 
 
