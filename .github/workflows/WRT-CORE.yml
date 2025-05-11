@@ -75,7 +75,7 @@ jobs:
           sudo -E apt -yqq clean
           sudo -E apt -yqq install dos2unix libfuse-dev
           sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-          sudo -E apt -yqq install $(curl -fsSL is.gd/depends_ubuntu_2204)
+#          sudo -E apt -yqq install $(curl -fsSL is.gd/depends_ubuntu_2204)
           sudo -E systemctl daemon-reload
           sudo -E timedatectl set-timezone "Asia/Shanghai"
 
@@ -171,8 +171,8 @@ jobs:
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
-
-          make -j$(nproc) || make -j$(nproc) V=s
+          # 首次尝试详细输出
+          make -j1 V=sc || make -j1 V=s || make -j1 V=99 || make -j1 V=1 || make -j1
 
       - name: Machine Information
         run: |
