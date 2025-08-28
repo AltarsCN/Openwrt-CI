@@ -22,6 +22,16 @@ on:
         default: false
         required: false
         type: boolean
+      VERBOSE:
+        description: '编译日志级别: 99/debug(最详细), sc/commands(显示命令), s/silent(静默), 1/basic(基本), 0/quiet(最少)'
+        default: 's'
+        required: false
+        type: string
+      THREADS:
+        description: '编译线程数 (0表示自动检测CPU核心数)'
+        default: '0'
+        required: false
+        type: string
 
 #CI权限
 permissions: write-all
@@ -65,3 +75,7 @@ jobs:
       WRT_PACKAGE: ${{inputs.PACKAGE}}
       #仅输出配置文件
       WRT_TEST: ${{inputs.TEST == true}}
+      #编译日志级别
+      WRT_VERBOSE: ${{inputs.VERBOSE || 's'}}
+      #编译线程数
+      WRT_THREADS: ${{inputs.THREADS || '0'}}
