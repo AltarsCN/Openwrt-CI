@@ -148,7 +148,7 @@ jobs:
             grep -v "^src-git nss_packages" "$FEEDS_FILE" > "$FEEDS_FILE.tmp" || true
             mv "$FEEDS_FILE.tmp" "$FEEDS_FILE"
           fi
-          echo "src-git nss_packages https://github.com/qosmio/nss-packages.git;NSS-12.5-K6.x" >> "$FEEDS_FILE"
+          echo "src-git nss_packages https://github.com/qosmio/nss-packages.git;main" >> "$FEEDS_FILE"
 
       - name: Check Scripts
         run: |
@@ -163,17 +163,6 @@ jobs:
 
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          
-          # 修复Boost库依赖问题 - 确保boost-system等模块可用
-          if [ -d "feeds/packages/libs/boost" ]; then
-            echo "检查Boost库配置..."
-            # 检查是否存在boost-system依赖问题
-            if ! ./scripts/feeds list | grep -q "boost-system"; then
-              echo "Boost库配置正常"
-            else
-              echo "处理Boost库依赖..."
-            fi
-          fi
 
       - name: Custom Packages
         run: |
@@ -189,25 +178,6 @@ jobs:
           cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
 
           $GITHUB_WORKSPACE/Scripts/Settings.sh
-
-          # 处理Boost库依赖警告
-          echo "处理Boost库依赖配置..."
-          
-          # 确保boost相关包配置正确
-          echo "CONFIG_PACKAGE_boost=y" >> ./.config
-          echo "CONFIG_PACKAGE_boost-libs=y" >> ./.config
-          echo "CONFIG_PACKAGE_boost-system=y" >> ./.config
-          echo "CONFIG_PACKAGE_boost-filesystem=y" >> ./.config
-          echo "CONFIG_PACKAGE_boost-thread=y" >> ./.config
-          echo "CONFIG_PACKAGE_boost-chrono=y" >> ./.config
-          echo "CONFIG_PACKAGE_boost-date_time=y" >> ./.config
-          
-          # 对于问题包，如果不需要可以禁用
-          # echo "CONFIG_PACKAGE_domoticz=n" >> ./.config
-          # echo "CONFIG_PACKAGE_i2pd=n" >> ./.config
-          # echo "CONFIG_PACKAGE_kea=n" >> ./.config
-          # echo "CONFIG_PACKAGE_libtorrent-rasterbar=n" >> ./.config
-          # echo "CONFIG_PACKAGE_trojan=n" >> ./.config
 
           # 设置线程数
           if [ "$WRT_THREADS" = "0" ]; then
