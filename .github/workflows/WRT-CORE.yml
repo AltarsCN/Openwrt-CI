@@ -40,6 +40,14 @@ on:
       WRT_TEST:
         required: false
         type: string
+      WRT_VERBOSE:
+        required: false
+        type: string
+        default: 's'
+      WRT_THREADS:
+        required: false
+        type: string
+        default: '0'
 
 env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -54,6 +62,8 @@ env:
   WRT_BRANCH: ${{inputs.WRT_BRANCH}}
   WRT_PACKAGE: ${{inputs.WRT_PACKAGE}}
   WRT_TEST: ${{inputs.WRT_TEST}}
+  WRT_VERBOSE: ${{inputs.WRT_VERBOSE}}
+  WRT_THREADS: ${{inputs.WRT_THREADS}}
 
 jobs:
   core:
@@ -168,21 +178,71 @@ jobs:
 
           $GITHUB_WORKSPACE/Scripts/Settings.sh
 
-          make defconfig -j$(nproc) && make clean -j$(nproc)
+          # 设置线程数
+          if [ "$WRT_THREADS" = "0" ]; then
+            THREADS=$(nproc)
+          else
+            THREADS=$WRT_THREADS
+          fi
+          echo "使用线程数: $THREADS"
+          echo "WRT_COMPILE_THREADS=$THREADS" >> $GITHUB_ENV
+
+          make defconfig -j$THREADS && make clean -j$THREADS
 
       - name: Download Packages
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
 
-          make download -j$(nproc)
+          make download -j$WRT_COMPILE_THREADS
 
       - name: Compile Firmware
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
-          # 首次尝试详细输出
-          make -j1 V=sc || make -j1 V=s || make -j1 V=99 || make -j1 V=1 || make -j1
+          
+          echo "编译参数配置:"
+          echo "  线程数: $WRT_COMPILE_THREADS"
+          echo "  日志等级: $WRT_VERBOSE"
+          echo "======================="
+          
+          # 根据配置的日志等级编译
+          case "$WRT_VERBOSE" in
+            "99"|"debug")
+              echo "使用最详细日志等级 V=99"
+              make -j$WRT_COMPILE_THREADS V=99 2>&1 | tee logs/build.log
+              ;;
+            "sc"|"commands")
+              echo "显示执行的命令 V=sc"
+              make -j$WRT_COMPILE_THREADS V=sc 2>&1 | tee logs/build.log
+              ;;
+            "s"|"silent")
+              echo "静默模式，仅显示错误 V=s"
+              make -j$WRT_COMPILE_THREADS V=s 2>&1 | tee logs/build.log
+              ;;
+            "1"|"basic")
+              echo "基本输出 V=1"
+              make -j$WRT_COMPILE_THREADS V=1 2>&1 | tee logs/build.log
+              ;;
+            "0"|"quiet")
+              echo "最小输出"
+              make -j$WRT_COMPILE_THREADS 2>&1 | tee logs/build.log
+              ;;
+            *)
+              echo "默认使用静默模式 V=s"
+              make -j$WRT_COMPILE_THREADS V=s 2>&1 | tee logs/build.log
+              ;;
+          esac
+          
+          # 编译失败时的重试逻辑（单线程详细输出）
+          if [ $? -ne 0 ]; then
+            echo "编译失败，使用单线程详细模式重试..."
+            make -j1 V=sc 2>&1 | tee logs/build_retry.log || \
+            make -j1 V=s 2>&1 | tee logs/build_retry2.log || \
+            make -j1 V=99 2>&1 | tee logs/build_retry3.log || \
+            make -j1 V=1 2>&1 | tee logs/build_final.log || \
+            make -j1 2>&1 | tee logs/build_last.log
+          fi
 
       - name: Machine Information
         run: |
@@ -202,6 +262,12 @@ jobs:
 
           cp -f ./.config ./upload/Config_"$WRT_CONFIG"_"$WRT_VER"_"$WRT_DATE".txt
 
+          # 打包构建日志
+          if [ -d "logs" ] && [ "$(ls -A logs)" ]; then
+            tar -czf ./upload/BuildLogs_"$WRT_CONFIG"_"$WRT_VER"_"$WRT_DATE".tar.gz logs/
+            echo "构建日志已打包"
+          fi
+
           if [[ $WRT_TEST != 'true' ]]; then
             echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
             echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
@@ -217,7 +283,7 @@ jobs:
 
             find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
 
-            make clean -j$(nproc)
+            make clean -j$WRT_COMPILE_THREADS
           fi
 
       - name: Release Firmware
@@ -243,3 +309,6 @@ jobs:
 
             内核版本：${{env.WRT_KVER}}
             插件列表：${{env.WRT_LIST}}
+
+            编译线程：${{env.WRT_COMPILE_THREADS}}
+            日志等级：${{env.WRT_VERBOSE}}
