@@ -91,9 +91,6 @@ jobs:
           sudo mkdir -p /mnt/build_wrt
           sudo chown $USER:$USER /mnt/build_wrt
           sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
-          
-          # 创建所需的日志目录
-          mkdir -p logs
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -109,6 +106,10 @@ jobs:
           echo "WRT_TARGET=$(grep -m 1 -oP '^CONFIG_TARGET_\K[\w]+(?=\=y)' ./Config/$WRT_CONFIG.txt | tr '[:lower:]' '[:upper:]')" >> $GITHUB_ENV
           echo "WRT_KVER=none" >> $GITHUB_ENV
           echo "WRT_LIST=none" >> $GITHUB_ENV
+          
+          # 调试输出环境变量
+          echo "调试: WRT_VERBOSE=$WRT_VERBOSE"
+          echo "调试: WRT_THREADS=$WRT_THREADS"
 
       - name: Clone Code
         id: clone-code
@@ -200,6 +201,7 @@ jobs:
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
+          mkdir -p logs
           
           echo "编译参数配置:"
           echo "  线程数: $WRT_COMPILE_THREADS"
@@ -207,35 +209,42 @@ jobs:
           echo "======================="
           
           # 根据配置的日志等级编译
+          COMPILE_SUCCESS=0
           case "$WRT_VERBOSE" in
             "99"|"debug")
               echo "使用最详细日志等级 V=99"
               make -j$WRT_COMPILE_THREADS V=99 2>&1 | tee logs/build.log
+              COMPILE_SUCCESS=${PIPESTATUS[0]}
               ;;
             "sc"|"commands")
               echo "显示执行的命令 V=sc"
               make -j$WRT_COMPILE_THREADS V=sc 2>&1 | tee logs/build.log
+              COMPILE_SUCCESS=${PIPESTATUS[0]}
               ;;
             "s"|"silent")
               echo "静默模式，仅显示错误 V=s"
               make -j$WRT_COMPILE_THREADS V=s 2>&1 | tee logs/build.log
+              COMPILE_SUCCESS=${PIPESTATUS[0]}
               ;;
             "1"|"basic")
               echo "基本输出 V=1"
               make -j$WRT_COMPILE_THREADS V=1 2>&1 | tee logs/build.log
+              COMPILE_SUCCESS=${PIPESTATUS[0]}
               ;;
             "0"|"quiet")
               echo "最小输出"
               make -j$WRT_COMPILE_THREADS 2>&1 | tee logs/build.log
+              COMPILE_SUCCESS=${PIPESTATUS[0]}
               ;;
             *)
               echo "默认使用静默模式 V=s"
               make -j$WRT_COMPILE_THREADS V=s 2>&1 | tee logs/build.log
+              COMPILE_SUCCESS=${PIPESTATUS[0]}
               ;;
           esac
           
           # 编译失败时的重试逻辑（单线程详细输出）
-          if [ $? -ne 0 ]; then
+          if [ $COMPILE_SUCCESS -ne 0 ]; then
             echo "编译失败，使用单线程详细模式重试..."
             make -j1 V=sc 2>&1 | tee logs/build_retry.log || \
             make -j1 V=s 2>&1 | tee logs/build_retry2.log || \
