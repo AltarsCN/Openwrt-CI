@@ -45,15 +45,9 @@ fi
 #高通平台调整
 DTS_PATH="./target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/"
 if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
-	#应用内核补丁修复
-	if [ -f "$GITHUB_WORKSPACE/Patches/0600-1-qca-nss-ecm-support-CORE-fix.patch" ]; then
-		echo "应用内核补丁..."
-		patch -p1 < "$GITHUB_WORKSPACE/Patches/0600-1-qca-nss-ecm-support-CORE-fix.patch" || echo "补丁应用失败，继续构建"
-	fi
-	
-	#取消nss相关feed
-	echo "CONFIG_FEED_nss_packages=n" >> ./.config
-	echo "CONFIG_FEED_sqm_scripts_nss=n" >> ./.config
+	#启用nss相关feed
+	echo "CONFIG_FEED_nss_packages=y" >> ./.config
+	echo "CONFIG_FEED_sqm_scripts_nss=y" >> ./.config
 	#开启sqm-nss插件
 	echo "CONFIG_PACKAGE_luci-app-sqm=y" >> ./.config
 	echo "CONFIG_PACKAGE_sqm-scripts-nss=y" >> ./.config
