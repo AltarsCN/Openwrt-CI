@@ -74,10 +74,12 @@ UPDATE_PACKAGE "luci-app-frps" "superzjg/luci-app-frpc_frps" "main" "pkg"
 UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-app-wolplus"
 UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 UPDATE_PACKAGE "quectel-CM-5G" "QMODEM/quectel-CM-5G" "main"
+#UPDATE_PACKAGE "fibocom_QMI_WWAN" "Siriling/5G-Modem-Support" "main" “pkg"
 
-if [[ $WRT_REPO != *"immortalwrt"* ]]; then
-	UPDATE_PACKAGE "qmi-wwan" "immortalwrt/wwan-packages" "master" "pkg"
-fi
+
+#if [[ $WRT_REPO != *"immortalwrt"* ]]; then
+#	UPDATE_PACKAGE "qmi-wwan" "immortalwrt/wwan-packages" "master" "pkg"
+#fi
 
 #更新软件包版本
 UPDATE_VERSION() {
