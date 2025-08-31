@@ -27,7 +27,7 @@ CONFIG_PACKAGE_luci-app-vlmcsd=y
 CONFIG_PACKAGE_luci-app-acme=y
 CONFIG_PACKAGE_luci-app-ddns=y
 CONFIG_PACKAGE_luci-app-easytier=y
-CONFIG_PACKAGE_luci-app-qmodem=y
+CONFIG_PACKAGE_luci-app-qmodem=n
 #删除插件
 CONFIG_PACKAGE_luci-app-wol=n
 #CONFIG_PACKAGE_luci-app-vlmcsd=n
@@ -47,11 +47,6 @@ CONFIG_CCACHE=y
 CONFIG_TARGET_MULTI_PROFILE=y
 CONFIG_TARGET_PER_DEVICE_ROOTFS=y
 
-# NSS ECM 配置调整
-CONFIG_PACKAGE_kmod-qca-nss-ecm=y
-CONFIG_PACKAGE_kmod-qca-nss-ecm-standard=n
-CONFIG_NSS_DRV_RMNET_ENABLE=n
-CONFIG_ECM_INTERFACE_RMNET_ENABLE=n
 
 #内核调整
 CONFIG_PACKAGE_kmod-dsa=y

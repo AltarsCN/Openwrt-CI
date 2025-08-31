@@ -148,7 +148,7 @@ jobs:
             grep -v "^src-git nss_packages" "$FEEDS_FILE" > "$FEEDS_FILE.tmp" || true
             mv "$FEEDS_FILE.tmp" "$FEEDS_FILE"
           fi
-          echo "src-git nss_packages https://github.com/AltarsCN/nss-packages.git;NSS-12.5-K6.x" >> "$FEEDS_FILE"
+          echo "src-git nss_packages https://github.com/LiBwrt/nss-packages.git;NSS-12.5-K6.x" >> "$FEEDS_FILE"
 
       - name: Check Scripts
         run: |
