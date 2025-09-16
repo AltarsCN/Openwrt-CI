@@ -68,13 +68,13 @@ UPDATE_PACKAGE "luci-app-tailscale" "asvow/luci-app-tailscale" "main"
 UPDATE_PACKAGE "easytier" "EasyTier/luci-app-easytier" "main"
 UPDATE_PACKAGE "gecoosac" "lwb1978/openwrt-gecoosac" "main"
 UPDATE_PACKAGE "mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
-UPDATE_PACKAGE "qmodem" "AltarsCN/QModem" "main"
+UPDATE_PACKAGE "qmodem" "Fujr/QModem" "main"
 UPDATE_PACKAGE "luci-app-frpc" "AltarsCN/luci-app-frpc_frps" "main" "pkg"
 UPDATE_PACKAGE "luci-app-frps" "AltarsCN/luci-app-frpc_frps" "main" "pkg"
 UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-app-wolplus"
 UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
-UPDATE_PACKAGE "quectel-CM-5G" "QMODEM/quectel-CM-5G" "main"
-UPDATE_PACKAGE "fibocom_QMI_WWAN" "immortalwrt/wwan-packages" "master" "pkg"
+#UPDATE_PACKAGE "quectel-CM-5G" "QMODEM/quectel-CM-5G" "main"
+#UPDATE_PACKAGE "fibocom_QMI_WWAN" "immortalwrt/wwan-packages" "master" "pkg"
 
 
 #if [[ $WRT_REPO != *"immortalwrt"* ]]; then
