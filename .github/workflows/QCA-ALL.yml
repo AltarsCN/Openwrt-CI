@@ -45,7 +45,7 @@ jobs:
       max-parallel: 2
       matrix:
         CONFIG: [IPQ60XX-WIFI-YES]
-        SOURCE: [Libwrt/openwrt-6.x]
+        SOURCE: [LiBwrt/openwrt-6.x]
         BRANCH: [k6.12-nss]
 
     #调用公用编译核心WRT-CORE.yml
