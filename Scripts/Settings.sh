@@ -37,6 +37,15 @@ echo "CONFIG_LUCI_LANG_zh_Hans=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-theme-$WRT_THEME=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 
+# 若启用了 luci-app-frpc / luci-app-frps，确保核心 frpc / frps 包也被选中，
+# 避免因为依赖未显式选中在 defconfig 阶段被裁减。
+grep -q '^CONFIG_PACKAGE_luci-app-frpc=y' ./.config && {
+	grep -q '^CONFIG_PACKAGE_frpc=y' ./.config || echo 'CONFIG_PACKAGE_frpc=y' >> ./.config
+}
+grep -q '^CONFIG_PACKAGE_luci-app-frps=y' ./.config && {
+	grep -q '^CONFIG_PACKAGE_frps=y' ./.config || echo 'CONFIG_PACKAGE_frps=y' >> ./.config
+}
+
 #手动调整的插件
 if [ -n "$WRT_PACKAGE" ]; then
 	echo -e "$WRT_PACKAGE" >> ./.config
