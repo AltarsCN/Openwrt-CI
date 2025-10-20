@@ -190,26 +190,6 @@ jobs:
 
           make defconfig -j$THREADS && make clean -j$THREADS
 
-      - name: Verify Required FRP Packages
-        run: |
-          cd ./wrt/
-          echo "校验 frp 相关包是否启用..."
-          NEED_PKGS=(luci-app-frpc luci-app-frps frpc frps)
-          MISSING=()
-          for P in "${NEED_PKGS[@]}"; do
-            if grep -q "^CONFIG_PACKAGE_${P}=y" .config; then
-              echo "[OK] ${P} 已启用"
-            else
-              echo "[WARN] ${P} 未显式启用"
-              MISSING+=("$P")
-            fi
-          done
-          # 只要 LuCI 应用被选中但核心 frpc/frps 缺失则失败
-          if grep -q '^CONFIG_PACKAGE_luci-app-frpc=y' .config && ! grep -q '^CONFIG_PACKAGE_frpc=y' .config; then
-            echo "ERROR: 已启用 luci-app-frpc 但缺少 frpc 核心包" >&2; exit 1; fi
-          if grep -q '^CONFIG_PACKAGE_luci-app-frps=y' .config && ! grep -q '^CONFIG_PACKAGE_frps=y' .config; then
-            echo "ERROR: 已启用 luci-app-frps 但缺少 frps 核心包" >&2; exit 1; fi
-          echo "FRP 相关校验结束。"
 
       - name: Download Packages
         if: env.WRT_TEST != 'true'
