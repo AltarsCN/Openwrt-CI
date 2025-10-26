@@ -202,6 +202,7 @@ jobs:
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
+          set -eo pipefail
           mkdir -p logs
           
           echo "编译参数配置:"
@@ -218,40 +219,40 @@ jobs:
           # 说明：之前脚本把 V=s 当作“仅错误”，实际 OpenWrt 中 V=s 仍然会输出大量编译行；因此改为 silent 等级不设置 V，并使用 make -s。
 
           COMPILE_SUCCESS=0
-          MAKE_BASE="make -j$WRT_COMPILE_THREADS"
+          MAKE_BASE=(make "-j$WRT_COMPILE_THREADS")
+          LOG_LABEL="静默模式（使用 make -s，不设置 V）"
+          MAKE_ARGS=(-s)
           case "${WRT_VERBOSE,,}" in
             99|debug)
-              echo "使用最详细日志等级 V=99"
-              eval "$MAKE_BASE V=99" 2>&1 | tee logs/build.log
-              COMPILE_SUCCESS=${PIPESTATUS[0]}
+              LOG_LABEL="使用最详细日志等级 V=99"
+              MAKE_ARGS=("V=99")
               ;;
             sc|commands)
-              echo "显示全部命令 V=sc"
-              eval "$MAKE_BASE V=sc" 2>&1 | tee logs/build.log
-              COMPILE_SUCCESS=${PIPESTATUS[0]}
+              LOG_LABEL="显示全部命令 V=sc"
+              MAKE_ARGS=("V=sc")
               ;;
             verbose|v)
-              echo "常规详细输出 V=s"
-              eval "$MAKE_BASE V=s" 2>&1 | tee logs/build.log
-              COMPILE_SUCCESS=${PIPESTATUS[0]}
+              LOG_LABEL="常规详细输出 V=s"
+              MAKE_ARGS=("V=s")
               ;;
             1|basic)
-              echo "基本输出 V=1"
-              eval "$MAKE_BASE V=1" 2>&1 | tee logs/build.log
-              COMPILE_SUCCESS=${PIPESTATUS[0]}
+              LOG_LABEL="基本输出 V=1"
+              MAKE_ARGS=("V=1")
               ;;
             s|silent|0|quiet|minimal)
-              echo "静默模式（使用 make -s，不设置 V）"
-              eval "$MAKE_BASE -s" 2>&1 | tee logs/build.log || true
-              # 静默模式下 PIPESTATUS 不可靠，手动获取最后退出码
-              COMPILE_SUCCESS=${PIPESTATUS[0]}
+              LOG_LABEL="静默模式（使用 make -s，不设置 V）"
+              MAKE_ARGS=(-s)
               ;;
             *)
-              echo "未识别的日志等级: $WRT_VERBOSE -> 使用静默模式"
-              eval "$MAKE_BASE -s" 2>&1 | tee logs/build.log || true
-              COMPILE_SUCCESS=${PIPESTATUS[0]}
+              LOG_LABEL="未识别的日志等级: $WRT_VERBOSE -> 使用静默模式"
+              MAKE_ARGS=(-s)
               ;;
           esac
+
+          echo "$LOG_LABEL"
+          echo "执行命令: ${MAKE_BASE[*]} ${MAKE_ARGS[*]}"
+          "${MAKE_BASE[@]}" "${MAKE_ARGS[@]}" 2>&1 | tee logs/build.log
+          COMPILE_SUCCESS=${PIPESTATUS[0]}
           
           # 编译失败时的重试逻辑（单线程详细输出）
           if [ $COMPILE_SUCCESS -ne 0 ]; then
@@ -306,6 +307,7 @@ jobs:
           fi
 
       - name: Release Firmware
+        if: success() && env.WRT_TEST != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{env.WRT_CONFIG}}_${{env.WRT_VER}}_${{env.WRT_DATE}}
