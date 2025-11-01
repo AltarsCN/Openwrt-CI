@@ -222,30 +222,37 @@ jobs:
           MAKE_BASE=(make "-j$WRT_COMPILE_THREADS")
           LOG_LABEL="静默模式（使用 make -s，不设置 V）"
           MAKE_ARGS=(-s)
+          LOG_MODE="silent"
           case "${WRT_VERBOSE,,}" in
             99|debug)
               LOG_LABEL="使用最详细日志等级 V=99"
               MAKE_ARGS=("V=99")
+              LOG_MODE="debug"
               ;;
             sc|commands)
               LOG_LABEL="显示全部命令 V=sc"
               MAKE_ARGS=("V=sc")
+              LOG_MODE="commands"
               ;;
             verbose|v)
               LOG_LABEL="常规详细输出 V=s"
               MAKE_ARGS=("V=s")
+              LOG_MODE="verbose"
               ;;
             1|basic)
               LOG_LABEL="基本输出 V=1"
               MAKE_ARGS=("V=1")
+              LOG_MODE="basic"
               ;;
             s|silent|0|quiet|minimal)
               LOG_LABEL="静默模式（使用 make -s，不设置 V）"
               MAKE_ARGS=(-s)
+              LOG_MODE="silent"
               ;;
             *)
               LOG_LABEL="未识别的日志等级: $WRT_VERBOSE -> 使用静默模式"
               MAKE_ARGS=(-s)
+              LOG_MODE="silent"
               ;;
           esac
 
@@ -256,12 +263,27 @@ jobs:
           
           # 编译失败时的重试逻辑（单线程详细输出）
           if [ $COMPILE_SUCCESS -ne 0 ]; then
-            echo "编译失败，进入分级重试（单线程递增详细度）..."
-            make -j1 -s 2>&1 | tee logs/build_retry_quiet.log || \
-            make -j1 V=1 2>&1 | tee logs/build_retry_basic.log || \
-            make -j1 V=s 2>&1 | tee logs/build_retry_verbose.log || \
-            make -j1 V=sc 2>&1 | tee logs/build_retry_commands.log || \
-            make -j1 V=99 2>&1 | tee logs/build_retry_debug.log
+            echo "编译失败。"
+
+            if [ "$LOG_MODE" = "silent" ]; then
+              echo "检测到精简日志模式，切换到 Debug 模式重新编译..."
+              if "${MAKE_BASE[@]}" V=99 2>&1 | tee logs/build_retry_debug_parallel.log; then
+                COMPILE_SUCCESS=${PIPESTATUS[0]}
+                echo "Debug 模式重新编译成功。"
+              else
+                COMPILE_SUCCESS=${PIPESTATUS[0]}
+                echo "Debug 模式重新编译仍然失败，将继续执行单线程分级重试。"
+              fi
+            fi
+
+            if [ $COMPILE_SUCCESS -ne 0 ]; then
+              echo "进入分级重试（单线程递增详细度）..."
+              make -j1 -s 2>&1 | tee logs/build_retry_quiet.log || \
+              make -j1 V=1 2>&1 | tee logs/build_retry_basic.log || \
+              make -j1 V=s 2>&1 | tee logs/build_retry_verbose.log || \
+              make -j1 V=sc 2>&1 | tee logs/build_retry_commands.log || \
+              make -j1 V=99 2>&1 | tee logs/build_retry_debug.log
+            fi
           fi
 
       - name: Machine Information
