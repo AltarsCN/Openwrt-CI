@@ -8,6 +8,8 @@ on:
     workflows: ["Auto-Clean"]
     types:
       - completed
+    branches:
+      - main
   #手动编译
   workflow_dispatch:
     inputs:
@@ -72,7 +74,7 @@ jobs:
       #插件调整
       WRT_PACKAGE: ${{inputs.PACKAGE}}
       #仅输出配置文件
-      WRT_TEST: ${{inputs.TEST}}
+      WRT_TEST: ${{inputs.TEST == true}}
       #编译日志级别
       WRT_VERBOSE: ${{inputs.VERBOSE || 's'}}
       #编译线程数

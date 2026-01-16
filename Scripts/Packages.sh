@@ -15,14 +15,23 @@ UPDATE_PACKAGE() {
 	for NAME in "${PKG_LIST[@]}"; do
 		# 查找匹配的目录
 		echo "搜索目录: $NAME"
-		local FOUND_DIRS=$(find ./feeds/ ../feeds/luci/ ../feeds/packages/ -maxdepth 3 -type d -iname "*$NAME*" 2>/dev/null)
+		local FOUND_DIRS=""
+		for search_dir in ./feeds/ ../feeds/luci/ ../feeds/packages/; do
+			if [ -d "$search_dir" ]; then
+				local found=$(find "$search_dir" -maxdepth 3 -type d -iname "*$NAME*" 2>/dev/null)
+				if [ -n "$found" ]; then
+					FOUND_DIRS="$FOUND_DIRS $found"
+				fi
+			fi
+		done
 
 		# 删除找到的目录
+		FOUND_DIRS=$(echo "$FOUND_DIRS" | xargs)
 		if [ -n "$FOUND_DIRS" ]; then
-			while read -r DIR; do
+			for DIR in $FOUND_DIRS; do
 				rm -rf "$DIR"
 				echo "删除目录: $DIR"
-			done <<< "$FOUND_DIRS"
+			done
 		else
 			echo "未找到目录: $NAME"
 		fi

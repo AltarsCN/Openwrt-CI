@@ -143,12 +143,20 @@ jobs:
       - name: Modify Feeds Source
         run: |
           FEEDS_FILE=./wrt/feeds.conf.default
-          # 移除已有 nss_packages 源，避免重复
-          if [ -f "$FEEDS_FILE" ]; then
-            grep -v "^src-git nss_packages" "$FEEDS_FILE" > "$FEEDS_FILE.tmp" || true
-            mv "$FEEDS_FILE.tmp" "$FEEDS_FILE"
+          # 检查是否为高通平台，只有高通平台需要 NSS feeds
+          if grep -q "CONFIG_TARGET_qualcommax=y" ./Config/$WRT_CONFIG.txt 2>/dev/null; then
+            # 移除已有 nss_packages 源，避免重复
+            if [ -f "$FEEDS_FILE" ]; then
+              grep -v "^src-git nss_packages" "$FEEDS_FILE" > "$FEEDS_FILE.tmp" || true
+              grep -v "^src-git sqm_scripts_nss" "$FEEDS_FILE.tmp" > "$FEEDS_FILE" || true
+              rm -f "$FEEDS_FILE.tmp"
+            fi
+            echo "src-git nss_packages https://github.com/qosmio/nss-packages.git;NSS-12.5-K6.x" >> "$FEEDS_FILE"
+            echo "src-git sqm_scripts_nss https://github.com/qosmio/sqm-scripts-nss.git" >> "$FEEDS_FILE"
+            echo "NSS feeds added for Qualcomm platform."
+          else
+            echo "Non-Qualcomm platform detected, skipping NSS feeds."
           fi
-          echo "src-git nss_packages https://github.com/qosmio/nss-packages.git;NSS-12.5-K6.x" >> "$FEEDS_FILE"
 
       - name: Check Scripts
         run: |
@@ -188,7 +196,8 @@ jobs:
           echo "使用线程数: $THREADS"
           echo "WRT_COMPILE_THREADS=$THREADS" >> $GITHUB_ENV
 
-          make defconfig -j$THREADS && make clean -j$THREADS
+          make defconfig
+          make clean
 
 
       - name: Download Packages
@@ -258,8 +267,10 @@ jobs:
 
           echo "$LOG_LABEL"
           echo "执行命令: ${MAKE_BASE[*]} ${MAKE_ARGS[*]}"
+          set +e
           "${MAKE_BASE[@]}" "${MAKE_ARGS[@]}" 2>&1 | tee logs/build.log
           COMPILE_SUCCESS=${PIPESTATUS[0]}
+          set -e
           
           # 编译失败时的重试逻辑（单线程详细输出）
           if [ $COMPILE_SUCCESS -ne 0 ]; then
@@ -267,11 +278,13 @@ jobs:
 
             if [ "$LOG_MODE" = "silent" ]; then
               echo "检测到精简日志模式，切换到 Debug 模式重新编译..."
-              if "${MAKE_BASE[@]}" V=99 2>&1 | tee logs/build_retry_debug_parallel.log; then
-                COMPILE_SUCCESS=${PIPESTATUS[0]}
+              set +e
+              "${MAKE_BASE[@]}" V=99 2>&1 | tee logs/build_retry_debug_parallel.log
+              COMPILE_SUCCESS=${PIPESTATUS[0]}
+              set -e
+              if [ $COMPILE_SUCCESS -eq 0 ]; then
                 echo "Debug 模式重新编译成功。"
               else
-                COMPILE_SUCCESS=${PIPESTATUS[0]}
                 echo "Debug 模式重新编译仍然失败，将继续执行单线程分级重试。"
               fi
             fi
@@ -310,7 +323,7 @@ jobs:
             echo "构建日志已打包"
           fi
 
-          if [[ $WRT_TEST != 'true' ]]; then
+          if [[ "${WRT_TEST:-false}" != 'true' ]]; then
             echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
             echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
 

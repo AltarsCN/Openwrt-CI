@@ -18,10 +18,8 @@ if [ -d "${PKG_PATH}homeproxy" ] || [ -d "${PKG_PATH}luci-app-homeproxy" ]; then
 	echo "正在克隆 surge-rules..."
 	if ! git clone -q --depth=1 --single-branch --branch "release" "https://github.com/Loyalsoldier/surge-rules.git" ./$HP_RULE/; then
 		echo "克隆 surge-rules 失败，跳过 HomeProxy 数据配置"
-		exit 1
-	fi
-
-	cd ./$HP_RULE/ || exit 1
+	else
+	cd ./$HP_RULE/ || { echo "无法进入 surge 目录"; }
 	RES_VER=$(git log -1 --pretty=format:'%s' | grep -o "[0-9]*" || echo "unknown")
 	echo "surge-rules 版本: $RES_VER"
 
@@ -35,14 +33,24 @@ if [ -d "${PKG_PATH}homeproxy" ] || [ -d "${PKG_PATH}luci-app-homeproxy" ]; then
 	cd .. && rm -rf ./$HP_RULE/
 
 	echo "HomeProxy 数据已更新完成！"
+	fi
 fi
 
 #修改argon主题字体和颜色
-if [ -d *"luci-theme-argon"* ]; then
-	cd ./luci-theme-argon/
+ARGON_DIR=$(find ./ -maxdepth 1 -type d -name "*luci-theme-argon*" | head -n 1)
+if [ -n "$ARGON_DIR" ] && [ -d "$ARGON_DIR" ]; then
+	cd "$ARGON_DIR"
 
-	sed -i "/font-weight:/ { /important/! { /\/\*/! s/:.*/: var(--font-weight);/ } }" $(find ./luci-theme-argon -type f -iname "*.css")
-	sed -i "s/primary '.*'/primary '#31a1a1'/; s/'0.2'/'0.5'/; s/'none'/'bing'/; s/'600'/'normal'/" ./luci-app-argon-config/root/etc/config/argon
+	CSS_FILES=$(find . -type f -iname "*.css" 2>/dev/null)
+	if [ -n "$CSS_FILES" ]; then
+		for css in $CSS_FILES; do
+			sed -i "/font-weight:/ { /important/! { /\/\*/! s/:.*/: var(--font-weight);/ } }" "$css"
+		done
+	fi
+	ARGON_CONFIG=$(find ../  -maxdepth 2 -type f -path "*luci-app-argon-config/root/etc/config/argon" | head -n 1)
+	if [ -n "$ARGON_CONFIG" ]; then
+		sed -i "s/primary '.*'/primary '#31a1a1'/; s/'0.2'/'0.5'/; s/'none'/'bing'/; s/'600'/'normal'/" "$ARGON_CONFIG"
+	fi
 
 	cd $PKG_PATH && echo "theme-argon has been fixed!"
 fi
@@ -106,26 +114,13 @@ vlmcsd_patch_dest="$vlmcsd_dir/patches"
 if [ -d "$vlmcsd_dir" ]; then
 	# 检查补丁文件是否存在
 	if [ ! -f "$vlmcsd_patch_src" ]; then
-		echo "Error: vlmcsd patch file $vlmcsd_patch_src not found!" >&2
-		exit 1
+		echo "Warning: vlmcsd patch file $vlmcsd_patch_src not found, skipping." >&2
+	else
+		# 创建目标目录并复制补丁
+		mkdir -p "$vlmcsd_patch_dest" || true
+		cp -f "$vlmcsd_patch_src" "$vlmcsd_patch_dest" || true
+		echo "vlmcsd: Patch copied successfully!"
 	fi
-
-	# 创建目标目录并复制补丁
-	mkdir -p "$vlmcsd_patch_dest" || exit 1
-	cp -f "$vlmcsd_patch_src" "$vlmcsd_patch_dest" || exit 1
-
-	# 进入源码目录应用补丁（如果未应用过）
-	if ! grep -q 'fix_compile_with_ccache' "$vlmcsd_dir/Makefile" 2>/dev/null; then
-		cd "$vlmcsd_dir" || exit 1
-		patch -p1 < "$vlmcsd_patch_src" && echo "vlmcsd: Patch applied to source!" || echo "vlmcsd: Patch may already be applied."
-		cd "$PKG_PATH"
-	fi
-
-	echo "vlmcsd: Patch copied and applied successfully!"
-	cd "$PKG_PATH" && echo "vlmcsd has been fixed!"
 else
 	echo "Warning: vlmcsd directory $vlmcsd_dir not found, skipping patch."
 fi
-
-
-																				

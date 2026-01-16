@@ -1,15 +1,30 @@
 #!/bin/bash
 
 #修改默认主题
-sed -i "s/luci-theme-bootstrap/luci-theme-$WRT_THEME/g" $(find ./feeds/luci/collections/ -type f -name "Makefile")
+THEME_FILES=$(find ./feeds/luci/collections/ -type f -name "Makefile" 2>/dev/null)
+if [ -n "$THEME_FILES" ]; then
+	for f in $THEME_FILES; do
+		sed -i "s/luci-theme-bootstrap/luci-theme-$WRT_THEME/g" "$f"
+	done
+fi
 #修改immortalwrt.lan关联IP
-sed -i "s/192\.168\.[0-9]*\.[0-9]*/$WRT_IP/g" $(find ./feeds/luci/modules/luci-mod-system/ -type f -name "flash.js")
+FLASH_JS=$(find ./feeds/luci/modules/luci-mod-system/ -type f -name "flash.js" 2>/dev/null)
+if [ -n "$FLASH_JS" ]; then
+	for f in $FLASH_JS; do
+		sed -i "s/192\.168\.[0-9]*\.[0-9]*/$WRT_IP/g" "$f"
+	done
+fi
 #添加编译日期标识
-sed -i "s/(\(luciversion || ''\))/(\1) + (' \/ $WRT_MARK-$WRT_DATE')/g" $(find ./feeds/luci/modules/luci-mod-status/ -type f -name "10_system.js")
+SYSTEM_JS=$(find ./feeds/luci/modules/luci-mod-status/ -type f -name "10_system.js" 2>/dev/null)
+if [ -n "$SYSTEM_JS" ]; then
+	for f in $SYSTEM_JS; do
+		sed -i "s/(\(luciversion || ''\))/(\1) + (' \/ $WRT_MARK-$WRT_DATE')/g" "$f"
+	done
+fi
 
-WIFI_SH=$(find ./target/linux/{mediatek/filogic,qualcommax}/base-files/etc/uci-defaults/ -type f -name "*set-wireless.sh" 2>/dev/null)
+WIFI_SH=$(find ./target/linux/{mediatek/filogic,qualcommax}/base-files/etc/uci-defaults/ -type f -name "*set-wireless.sh" 2>/dev/null | head -n 1)
 WIFI_UC="./package/network/config/wifi-scripts/files/lib/wifi/mac80211.uc"
-if [ -f "$WIFI_SH" ]; then
+if [ -n "$WIFI_SH" ] && [ -f "$WIFI_SH" ]; then
 	#修改WIFI名称
 	sed -i "s/BASE_SSID='.*'/BASE_SSID='$WRT_SSID'/g" $WIFI_SH
 	#修改WIFI密码
@@ -26,10 +41,14 @@ elif [ -f "$WIFI_UC" ]; then
 fi
 
 CFG_FILE="./package/base-files/files/bin/config_generate"
-#修改默认IP地址
-sed -i "s/192\.168\.[0-9]*\.[0-9]*/$WRT_IP/g" $CFG_FILE
-#修改默认主机名
-sed -i "s/hostname='.*'/hostname='$WRT_NAME'/g" $CFG_FILE
+if [ -f "$CFG_FILE" ]; then
+	#修改默认IP地址
+	sed -i "s/192\.168\.[0-9]*\.[0-9]*/$WRT_IP/g" "$CFG_FILE"
+	#修改默认主机名
+	sed -i "s/hostname='.*'/hostname='$WRT_NAME'/g" "$CFG_FILE"
+else
+	echo "Warning: config_generate not found, skipping IP and hostname modification."
+fi
 
 #配置文件修改
 echo "CONFIG_PACKAGE_luci=y" >> ./.config
@@ -69,7 +88,11 @@ if [[ "${WRT_TARGET^^}" == *"QUALCOMMAX"* ]]; then
 	fi
 	#无WIFI配置调整Q6大小
 	if [[ "${WRT_CONFIG,,}" == *"wifi"* && "${WRT_CONFIG,,}" == *"no"* ]]; then
-		find $DTS_PATH -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
-		echo "qualcommax set up nowifi successfully!"
+		if [ -d "$DTS_PATH" ]; then
+			find "$DTS_PATH" -type f ! -iname '*nowifi*' -exec sed -i 's/ipq\(6018\|8074\).dtsi/ipq\1-nowifi.dtsi/g' {} +
+			echo "qualcommax set up nowifi successfully!"
+		else
+			echo "Warning: DTS path $DTS_PATH not found, skipping nowifi setup."
+		fi
 	fi
 fi
