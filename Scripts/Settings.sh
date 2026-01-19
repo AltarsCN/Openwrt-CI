@@ -68,21 +68,33 @@ grep -q '^CONFIG_PACKAGE_luci-app-frps=y' ./.config && {
 # 修复 luci-app-frpc/frps 与上游 frpc/frps 包的文件冲突
 # 问题：两者都包含 /etc/config/frpc 和 /etc/init.d/frpc，导致 opkg 安装失败
 # 解决：删除上游 frpc/frps 包中的冲突文件定义，让 luci-app 版本优先
+# 注意：上游 frp 包使用模板定义，frpc 和 frps 都在同一个 Makefile 中
 FRP_PACKAGES_PATH="./feeds/packages/net"
+# 首先尝试统一的 frp 目录（OpenWrt/immortalwrt 结构）
+if [ -d "$FRP_PACKAGES_PATH/frp" ]; then
+	FRP_MAKEFILE="$FRP_PACKAGES_PATH/frp/Makefile"
+	if [ -f "$FRP_MAKEFILE" ]; then
+		# 上游使用模板: $(INSTALL_CONF) ./files/$(2).config $(1)/etc/config/$(2)
+		# 需要注释掉配置文件和 init 脚本的安装行
+		sed -i 's|\$(INSTALL_CONF) \./files/\$(2)\.config \$(1)/etc/config/\$(2)|# Removed: conflicts with luci-app-frpc/frps|g' "$FRP_MAKEFILE"
+		sed -i 's|\$(INSTALL_BIN) \./files/\$(2)\.init \$(1)/etc/init\.d/\$(2)|# Removed: conflicts with luci-app-frpc/frps|g' "$FRP_MAKEFILE"
+		echo "frp: Removed conflicting config/init files from upstream package"
+	fi
+fi
+# 备选：检查分离的 frpc/frps 目录（某些分支可能使用此结构）
 if [ -d "$FRP_PACKAGES_PATH/frpc" ]; then
 	FRP_MAKEFILE="$FRP_PACKAGES_PATH/frpc/Makefile"
 	if [ -f "$FRP_MAKEFILE" ]; then
-		# 注释掉配置文件和 init 脚本的安装行
-		sed -i 's|$(INSTALL_CONF) ./files/frpc.config $(1)/etc/config/frpc|# Removed: conflicts with luci-app-frpc|g' "$FRP_MAKEFILE"
-		sed -i 's|$(INSTALL_BIN) ./files/frpc.init $(1)/etc/init.d/frpc|# Removed: conflicts with luci-app-frpc|g' "$FRP_MAKEFILE"
+		sed -i 's|\$(INSTALL_CONF).*etc/config/frpc|# Removed: conflicts with luci-app-frpc|g' "$FRP_MAKEFILE"
+		sed -i 's|\$(INSTALL_BIN).*etc/init\.d/frpc|# Removed: conflicts with luci-app-frpc|g' "$FRP_MAKEFILE"
 		echo "frpc: Removed conflicting config/init files from upstream package"
 	fi
 fi
 if [ -d "$FRP_PACKAGES_PATH/frps" ]; then
 	FRP_MAKEFILE="$FRP_PACKAGES_PATH/frps/Makefile"
 	if [ -f "$FRP_MAKEFILE" ]; then
-		sed -i 's|$(INSTALL_CONF) ./files/frps.config $(1)/etc/config/frps|# Removed: conflicts with luci-app-frps|g' "$FRP_MAKEFILE"
-		sed -i 's|$(INSTALL_BIN) ./files/frps.init $(1)/etc/init.d/frps|# Removed: conflicts with luci-app-frps|g' "$FRP_MAKEFILE"
+		sed -i 's|\$(INSTALL_CONF).*etc/config/frps|# Removed: conflicts with luci-app-frps|g' "$FRP_MAKEFILE"
+		sed -i 's|\$(INSTALL_BIN).*etc/init\.d/frps|# Removed: conflicts with luci-app-frps|g' "$FRP_MAKEFILE"
 		echo "frps: Removed conflicting config/init files from upstream package"
 	fi
 fi
