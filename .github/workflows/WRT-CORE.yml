@@ -128,14 +128,7 @@ jobs:
             openwrt-dl-${{ env.WRT_CONFIG }}-
             openwrt-dl-
 
-      - name: Setup Build Cache (ccache)
-        uses: actions/cache@v3
-        with:
-          path: ./wrt/.ccache
-          key: openwrt-ccache-${{ env.WRT_CONFIG }}-${{ env.WRT_HASH }}
-          restore-keys: |
-            openwrt-ccache-${{ env.WRT_CONFIG }}-
-            openwrt-ccache-
+      # ccache 由 hendrikmuhs/ccache-action 自动管理，无需单独配置
 
 
 
@@ -204,8 +197,24 @@ jobs:
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
-
-          make download -j$WRT_COMPILE_THREADS
+          
+          # 下载包，失败时自动重试
+          for i in 1 2 3; do
+            echo "下载尝试 $i/3..."
+            if make download -j$WRT_COMPILE_THREADS; then
+              echo "下载完成"
+              break
+            fi
+            if [ $i -eq 3 ]; then
+              echo "下载失败，已重试 3 次"
+              exit 1
+            fi
+            echo "下载失败，等待 10 秒后重试..."
+            sleep 10
+          done
+          
+          # 检查下载完整性
+          find dl -size -1024c -exec ls -la {} \; -exec rm -f {} \;
 
       - name: Compile Firmware
         if: env.WRT_TEST != 'true'

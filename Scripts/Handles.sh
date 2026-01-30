@@ -19,20 +19,20 @@ if [ -d "${PKG_PATH}homeproxy" ] || [ -d "${PKG_PATH}luci-app-homeproxy" ]; then
 	if ! git clone -q --depth=1 --single-branch --branch "release" "https://github.com/Loyalsoldier/surge-rules.git" ./$HP_RULE/; then
 		echo "克隆 surge-rules 失败，跳过 HomeProxy 数据配置"
 	else
-	cd ./$HP_RULE/ || { echo "无法进入 surge 目录"; }
-	RES_VER=$(git log -1 --pretty=format:'%s' | grep -o "[0-9]*" || echo "unknown")
-	echo "surge-rules 版本: $RES_VER"
+		cd ./$HP_RULE/ || { echo "无法进入 surge 目录"; exit 1; }
+		RES_VER=$(git log -1 --pretty=format:'%s' | grep -o "[0-9]*" || echo "unknown")
+		echo "surge-rules 版本: $RES_VER"
 
-	echo $RES_VER | tee china_ip4.ver china_ip6.ver china_list.ver gfw_list.ver
-	awk -F, '/^IP-CIDR,/{print $2 > "china_ip4.txt"} /^IP-CIDR6,/{print $2 > "china_ip6.txt"}' cncidr.txt
-	sed 's/^\.//g' direct.txt > china_list.txt ; sed 's/^\.//g' gfw.txt > gfw_list.txt
-	
-	echo "正在移动资源文件..."
-	mv -f ./{china_*,gfw_list}.{ver,txt} ../$HP_PATH/resources/
+		echo $RES_VER | tee china_ip4.ver china_ip6.ver china_list.ver gfw_list.ver
+		awk -F, '/^IP-CIDR,/{print $2 > "china_ip4.txt"} /^IP-CIDR6,/{print $2 > "china_ip6.txt"}' cncidr.txt
+		sed 's/^\.//g' direct.txt > china_list.txt ; sed 's/^\.//g' gfw.txt > gfw_list.txt
+		
+		echo "正在移动资源文件..."
+		mv -f ./{china_*,gfw_list}.{ver,txt} ../$HP_PATH/resources/
 
-	cd .. && rm -rf ./$HP_RULE/
+		cd .. && rm -rf ./$HP_RULE/
 
-	echo "HomeProxy 数据已更新完成！"
+		echo "HomeProxy 数据已更新完成！"
 	fi
 fi
 

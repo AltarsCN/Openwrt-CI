@@ -16,7 +16,8 @@ UPDATE_PACKAGE() {
 		# 查找匹配的目录
 		echo "搜索目录: $NAME"
 		local FOUND_DIRS=""
-		for search_dir in ./feeds/ ../feeds/luci/ ../feeds/packages/; do
+		# 注意：此脚本在 ./wrt/package/ 目录下执行，所以路径使用 ../feeds/
+		for search_dir in ../feeds/luci/ ../feeds/packages/ ../feeds/; do
 			if [ -d "$search_dir" ]; then
 				local found=$(find "$search_dir" -maxdepth 3 -type d -iname "*$NAME*" 2>/dev/null)
 				if [ -n "$found" ]; then

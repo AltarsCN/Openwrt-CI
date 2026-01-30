@@ -70,34 +70,45 @@ grep -q '^CONFIG_PACKAGE_luci-app-frps=y' ./.config && {
 # 解决：删除上游 frpc/frps 包中的冲突文件定义，让 luci-app 版本优先
 # 注意：上游 frp 包使用模板定义，frpc 和 frps 都在同一个 Makefile 中
 FRP_PACKAGES_PATH="./feeds/packages/net"
+
+# 通用函数：注释掉 Makefile 中包含指定关键词的行
+comment_makefile_lines() {
+	local file="$1"
+	local pattern="$2"
+	local comment="$3"
+	if [ -f "$file" ]; then
+		# 使用 awk 注释掉匹配的行（更可靠）
+		awk -v pat="$pattern" -v cmt="$comment" '
+			$0 ~ pat && !/^[[:space:]]*#/ { print "# " cmt ": " $0; next }
+			{ print }
+		' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+		return 0
+	fi
+	return 1
+}
+
 # 首先尝试统一的 frp 目录（OpenWrt/immortalwrt 结构）
 if [ -d "$FRP_PACKAGES_PATH/frp" ]; then
 	FRP_MAKEFILE="$FRP_PACKAGES_PATH/frp/Makefile"
 	if [ -f "$FRP_MAKEFILE" ]; then
-		# 上游使用模板: $(INSTALL_CONF) ./files/$(2).config $(1)/etc/config/$(2)
-		# 需要注释掉配置文件和 init 脚本的安装行
-		sed -i 's|\$(INSTALL_CONF) \./files/\$(2)\.config \$(1)/etc/config/\$(2)|# Removed: conflicts with luci-app-frpc/frps|g' "$FRP_MAKEFILE"
-		sed -i 's|\$(INSTALL_BIN) \./files/\$(2)\.init \$(1)/etc/init\.d/\$(2)|# Removed: conflicts with luci-app-frpc/frps|g' "$FRP_MAKEFILE"
+		# 注释掉所有安装 config 和 init.d 文件的行
+		comment_makefile_lines "$FRP_MAKEFILE" "etc/config" "Conflicts with luci-app-frpc/frps"
+		comment_makefile_lines "$FRP_MAKEFILE" "etc/init\.d" "Conflicts with luci-app-frpc/frps"
 		echo "frp: Removed conflicting config/init files from upstream package"
 	fi
 fi
+
 # 备选：检查分离的 frpc/frps 目录（某些分支可能使用此结构）
-if [ -d "$FRP_PACKAGES_PATH/frpc" ]; then
-	FRP_MAKEFILE="$FRP_PACKAGES_PATH/frpc/Makefile"
-	if [ -f "$FRP_MAKEFILE" ]; then
-		sed -i 's|\$(INSTALL_CONF).*etc/config/frpc|# Removed: conflicts with luci-app-frpc|g' "$FRP_MAKEFILE"
-		sed -i 's|\$(INSTALL_BIN).*etc/init\.d/frpc|# Removed: conflicts with luci-app-frpc|g' "$FRP_MAKEFILE"
-		echo "frpc: Removed conflicting config/init files from upstream package"
+for pkg in frpc frps; do
+	if [ -d "$FRP_PACKAGES_PATH/$pkg" ]; then
+		FRP_MAKEFILE="$FRP_PACKAGES_PATH/$pkg/Makefile"
+		if [ -f "$FRP_MAKEFILE" ]; then
+			comment_makefile_lines "$FRP_MAKEFILE" "etc/config/$pkg" "Conflicts with luci-app-$pkg"
+			comment_makefile_lines "$FRP_MAKEFILE" "etc/init\.d/$pkg" "Conflicts with luci-app-$pkg"
+			echo "$pkg: Removed conflicting config/init files from upstream package"
+		fi
 	fi
-fi
-if [ -d "$FRP_PACKAGES_PATH/frps" ]; then
-	FRP_MAKEFILE="$FRP_PACKAGES_PATH/frps/Makefile"
-	if [ -f "$FRP_MAKEFILE" ]; then
-		sed -i 's|\$(INSTALL_CONF).*etc/config/frps|# Removed: conflicts with luci-app-frps|g' "$FRP_MAKEFILE"
-		sed -i 's|\$(INSTALL_BIN).*etc/init\.d/frps|# Removed: conflicts with luci-app-frps|g' "$FRP_MAKEFILE"
-		echo "frps: Removed conflicting config/init files from upstream package"
-	fi
-fi
+done
 
 #手动调整的插件
 if [ -n "$WRT_PACKAGE" ]; then
