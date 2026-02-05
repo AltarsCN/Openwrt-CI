@@ -124,3 +124,43 @@ if [ -d "$vlmcsd_dir" ]; then
 else
 	echo "Warning: vlmcsd directory $vlmcsd_dir not found, skipping patch."
 fi
+
+#为zerotier启用内置控制器
+zerotier_dir="$GITHUB_WORKSPACE/wrt/feeds/packages/net/zerotier"
+zerotier_patch="$GITHUB_WORKSPACE/Patches/020-zerotier-enable-controller.patch"
+
+if [ -d "$zerotier_dir" ]; then
+	echo "===== 为 ZeroTier 启用内置控制器 ====="
+	
+	# 方法1: 直接修改 Config.in 添加控制器选项
+	if ! grep -q "ZEROTIER_ENABLE_CONTROLLER" "$zerotier_dir/Config.in" 2>/dev/null; then
+		cat >> "$zerotier_dir/Config.in" << 'EOF'
+
+config ZEROTIER_ENABLE_CONTROLLER
+	bool "Enable built-in network controller"
+	depends on PACKAGE_zerotier
+	default y
+	help
+	  Enable the built-in ZeroTier network controller.
+	  This allows creating and managing ZeroTier networks locally.
+EOF
+		echo "zerotier: Config.in patched!"
+	fi
+	
+	# 方法2: 修改 Makefile 添加 ZT_CONTROLLER 编译选项
+	if ! grep -q "ZT_CONTROLLER=1" "$zerotier_dir/Makefile" 2>/dev/null; then
+		sed -i '/^MAKE_FLAGS.*ZT_EMBEDDED/,/OSTYPE.*Linux/{
+			/OSTYPE.*Linux/a\
+\
+# Enable built-in network controller\
+ifeq ($(CONFIG_ZEROTIER_ENABLE_CONTROLLER),y)\
+MAKE_FLAGS += ZT_CONTROLLER=1\
+endif
+		}' "$zerotier_dir/Makefile"
+		echo "zerotier: Makefile patched with ZT_CONTROLLER!"
+	fi
+	
+	echo "zerotier: Built-in controller support enabled!"
+else
+	echo "Warning: zerotier directory $zerotier_dir not found, skipping controller patch."
+fi

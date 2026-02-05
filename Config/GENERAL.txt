@@ -29,6 +29,8 @@ CONFIG_PACKAGE_luci-app-ddns=y
 CONFIG_PACKAGE_luci-app-easytier=y
 CONFIG_PACKAGE_luci-app-qmodem=n
 CONFIG_PACKAGE_luci-app-zerotier=y
+CONFIG_PACKAGE_zerotier=y
+CONFIG_ZEROTIER_ENABLE_CONTROLLER=y
 #核心包依赖（确保 luci-app 的依赖包被正确选中）
 CONFIG_PACKAGE_frpc=y
 CONFIG_PACKAGE_frps=y
