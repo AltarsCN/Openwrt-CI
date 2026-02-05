@@ -132,16 +132,41 @@ zerotier_patch="$GITHUB_WORKSPACE/Patches/020-zerotier-enable-controller.patch"
 if [ -d "$zerotier_dir" ]; then
 	echo "===== 为 ZeroTier 启用内置控制器 ====="
 	
-	# 使用标准 patch 文件应用修改
+	# 方法1: 直接修改 Config.in 添加控制器选项（在 endmenu 之前插入）
 	if ! grep -q "ZEROTIER_ENABLE_CONTROLLER" "$zerotier_dir/Config.in" 2>/dev/null; then
-		if [ -f "$zerotier_patch" ]; then
-			cd "$zerotier_dir" && patch -p1 < "$zerotier_patch" && cd - > /dev/null
-			echo "zerotier: Patch applied successfully!"
-		else
-			echo "Warning: Patch file $zerotier_patch not found!"
-		fi
-	else
-		echo "zerotier: Already patched, skipping."
+		# 使用 awk 在 endmenu 之前插入（避免 sed 多行问题）
+		awk '
+		/^endmenu/ {
+			print "config ZEROTIER_ENABLE_CONTROLLER"
+			print "\tbool \"Enable built-in network controller\""
+			print "\tdepends on PACKAGE_zerotier"
+			print "\tdefault y"
+			print "\thelp"
+			print "\t  Enable the built-in ZeroTier network controller."
+			print "\t  This allows creating and managing ZeroTier networks locally."
+			print ""
+		}
+		{print}
+		' "$zerotier_dir/Config.in" > "$zerotier_dir/Config.in.new" && \
+		mv "$zerotier_dir/Config.in.new" "$zerotier_dir/Config.in"
+		echo "zerotier: Config.in patched!"
+	fi
+	
+	# 方法2: 在 "define Build/Compile" 之前插入 ZT_CONTROLLER 条件编译选项
+	if ! grep -q "ZT_CONTROLLER=1" "$zerotier_dir/Makefile" 2>/dev/null; then
+		# 使用 awk 在 define Build/Compile 之前插入
+		awk '
+		/^define Build\/Compile/ {
+			print "# Enable built-in network controller"
+			print "ifeq ($(CONFIG_ZEROTIER_ENABLE_CONTROLLER),y)"
+			print "MAKE_FLAGS += ZT_CONTROLLER=1"
+			print "endif"
+			print ""
+		}
+		{print}
+		' "$zerotier_dir/Makefile" > "$zerotier_dir/Makefile.new" && \
+		mv "$zerotier_dir/Makefile.new" "$zerotier_dir/Makefile"
+		echo "zerotier: Makefile patched with ZT_CONTROLLER!"
 	fi
 	
 	echo "zerotier: Built-in controller support enabled!"
