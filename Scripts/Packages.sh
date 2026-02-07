@@ -85,6 +85,8 @@ UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-ap
 UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 UPDATE_PACKAGE "luci-app-ddns" "AltarsCN/luci-app-ddns" "main"
 UPDATE_PACKAGE "ddns-scripts" "AltarsCN/ddns-scripts" "main"
+UPDATE_PACKAGE "zerotier" "AltarsCN/zerotier-openwrt" "master" "pkg"
+UPDATE_PACKAGE "luci-app-zerotier" "AltarsCN/luci-app-zerotier" "main"
 #UPDATE_PACKAGE "quectel-CM-5G" "QMODEM/quectel-CM-5G" "main"
 #UPDATE_PACKAGE "fibocom_QMI_WWAN" "immortalwrt/wwan-packages" "master" "pkg"
 
